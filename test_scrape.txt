@@ -1,0 +1,53 @@
+Scraping active. Found 2 rows:
+--- ROW ---
+LTCUSDTPerpetual
+
+
+200XLong
+	10 Kontrakt	56.16	55.94	443.48	0.05%	
+‎0.0280 USDT
+‎≈ 0.02 USD
+(Cross)
+	
+‎-0.0220 USDT
+‎-78.34%
+‎≈ -0.02 USD
+	0.0000 USDT
+≈ 0.00 USD
+Zapisano 0.003 USDT
+	
+Błyskawiczne zamknięcie
+	
+Dodaj
+	
+Cena
+Rynek
+Ilość (Kontrakt)
+Zamknij pozycję długą
+	Odwróć
+--- ROW ---
+LTCUSDTPerpetual
+
+
+200XShort
+	600 Kontrakt	56.13	55.94	443.48	0.05%	
+‎1.6841 USDT
+‎≈ 1.68 USD
+(Cross)
+	
+‎1.1900 USDT
+‎70.65%
+‎≈ 1.19 USD
+	-0.0005 USDT
+≈ 0.00 USD
+Zapisano 0.1852 USDT
+	
+Błyskawiczne zamknięcie
+	
+Dodaj
+	
+Cena
+Rynek
+Ilość (Kontrakt)
+Zamknij pozycję krótką
+	Odwróć

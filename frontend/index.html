@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEXC Tracker - LTC/USDT</title>
+    <!-- TradingView Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css?v=6">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h1>CryptoZap</h1>
+            </div>
+            <div class="pair-info">
+                <span class="pair-name">LTC / USDT</span>
+                <span class="exchange-badge">MEXC</span>
+                <div class="interval-selector">
+                    <button class="interval-btn active" data-interval="1m">1m</button>
+                    <button class="interval-btn" data-interval="5m">5m</button>
+                    <button class="interval-btn" data-interval="15m">15m</button>
+                    <button class="interval-btn" data-interval="1h">1h</button>
+                    <button class="interval-btn" data-interval="4h">4h</button>
+                    <button class="interval-btn" data-interval="1d">1d</button>
+                </div>
+            </div>
+            <div class="header-right" style="display: flex; align-items: center; gap: 1rem;">
+                <div class="controls-wrapper" style="display:flex; align-items:center; gap:10px;">
+                    <div class="auto-toggle-container"
+                        style="display:flex; align-items:center; gap:5px; background: #2a2e39; padding: 5px 10px; border-radius: 4px;">
+                        <span id="auto-status-indicator"
+                            style="width:10px; height:10px; border-radius:50%; background:#f23645; display:inline-block;"></span>
+                        <span style="color:#d1d4dc; font-size:12px; font-weight:bold;">AUTO SYNC</span>
+                        <label class="switch"
+                            style="position: relative; display: inline-block; width: 34px; height: 20px; margin-left: 5px;">
+                            <input type="checkbox" id="auto-toggle-checkbox">
+                            <span class="slider round"
+                                style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px;"></span>
+                        </label>
+                    </div>
+                    <button id="btn-manual-trade" class="manual-trade-btn"
+                        style="background-color: #2962ff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                        Otwórz/Zamknij pozycje
+                    </button>
+                    <button id="btn-dev-info"
+                        style="background-color: #37474f; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left:10px;">
+                        🛠️ Dev Info
+                    </button>
+                </div>
+                <div class="status-indicator">
+                    <div class="pulse-dot"></div>
+                    <span>Live Data</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dev Info Modal -->
+        <div id="dev-info-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>🛠️ Dev Info — Statystyki Uśrednień</h3>
+                    <button id="close-dev-info-btn" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body" id="dev-info-body" style="max-height: 500px; overflow-y: auto;">
+                    <div style="color: #8a8d9a; text-align: center; padding: 20px;">Ładowanie danych...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manual Trading Modal -->
+        <div id="manual-trade-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Zarządzanie Pozycjami</h3>
+                    <button id="close-modal-btn" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <!-- First line: input and open buttons -->
+                    <div class="modal-row custom-row">
+                        <input type="number" id="manual-amount" class="panel-input" placeholder="Ilość kontraktów (LTC)"
+                            style="width: 150px;" min="1" step="1" value="10">
+                        <div class="btn-group">
+                            <button id="btn-open-long" class="action-btn btn-long">Otwórz Long</button>
+                            <button id="btn-open-short" class="action-btn btn-short">Otwórz Short</button>
+                        </div>
+                    </div>
+
+                    <!-- Second line: Long data and close button -->
+                    <div class="modal-row data-row">
+                        <div class="position-info">
+                            <span class="label">LONG:</span>
+                            <span id="modal-l-status" class="value">BRAK</span>
+                            <span class="label">| Ilość:</span>
+                            <span id="modal-l-amt" class="value">0</span>
+                            <span class="label">| Śr. Cena:</span>
+                            <span id="modal-l-price" class="value">0.0</span>
+                            <span class="label">| PNL:</span>
+                            <span id="modal-l-pnl" class="value" style="font-weight: 600;">0.00</span>
+                        </div>
+                        <button id="btn-close-long" class="action-btn btn-close">Zamknij Long</button>
+                    </div>
+
+                    <!-- Third line: Short data and close button -->
+                    <div class="modal-row data-row">
+                        <div class="position-info">
+                            <span class="label">SHORT:</span>
+                            <span id="modal-s-status" class="value">BRAK</span>
+                            <span class="label">| Ilość:</span>
+                            <span id="modal-s-amt" class="value">0</span>
+                            <span class="label">| Śr. Cena:</span>
+                            <span id="modal-s-price" class="value">0.0</span>
+                            <span class="label">| PNL:</span>
+                            <span id="modal-s-pnl" class="value" style="font-weight: 600;">0.00</span>
+                        </div>
+                        <button id="btn-close-short" class="action-btn btn-close">Zamknij Short</button>
+                    </div>
+
+                    <div class="modal-row"
+                        style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                        <button id="btn-test-popup" class="action-btn"
+                            style="background: var(--bg-hover); width: 100%;">🛠️ Przetestuj Zamykanie Popupów</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <main class="chart-section">
+            <div class="chart-header">
+                <h2 id="chart-title">LTC/USDT 1m Chart</h2>
+                <div class="chart-tools">
+                    <button id="refreshBtn" class="tool-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path
+                                d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="chart-wrapper">
+                <div id="loading" class="loading-overlay">
+                    <div class="spinner"></div>
+                </div>
+                <!-- The chart will be injected here -->
+                <div id="chart"></div>
+                <!-- PNL Information Panel -->
+                <div id="info-panel" class="info-panel hidden">
+                    <div class="panel-header">MS v2.0.5 DUAL</div>
+
+                    <div class="panel-section">
+                        <div class="panel-row"><span class="label">LONG:</span> <span id="l-status"
+                                class="value">BRAK</span></div>
+                        <div class="panel-row"><span class="label">Poz:</span> <span id="l-poz" class="value">0
+                                LTC</span> <span class="label">| PNL:</span> <span id="l-pnl" class="value"
+                                style="font-weight: 600;">0.00</span></div>
+                        <div class="panel-row"><span class="label">L. uśr.:</span> <span id="l-usr"
+                                class="value">0</span> <span class="label">| Śr. uśr.:</span> <span id="l-avg-usr"
+                                class="value">0</span></div>
+                        <div class="panel-row"><span class="label">Mnożnik:</span> <input type="number"
+                                id="mnoznik-long" class="panel-input" value="10" min="1" step="1"></div>
+                    </div>
+
+                    <div class="panel-section">
+                        <div class="panel-row"><span class="label">SHORT:</span> <span id="s-status"
+                                class="value">BRAK</span></div>
+                        <div class="panel-row"><span class="label">Poz:</span> <span id="s-poz" class="value">0
+                                LTC</span> <span class="label">| PNL:</span> <span id="s-pnl" class="value"
+                                style="font-weight: 600;">0.00</span></div>
+                        <div class="panel-row"><span class="label">L. uśr.:</span> <span id="s-usr"
+                                class="value">0</span> <span class="label">| Śr. uśr.:</span> <span id="s-avg-usr"
+                                class="value">0</span></div>
+                        <div class="panel-row"><span class="label">Mnożnik:</span> <input type="number"
+                                id="mnoznik-short" class="panel-input" value="10" min="1" step="1"></div>
+                    </div>
+
+                    <div class="panel-section no-border">
+                        <div class="panel-row"><span class="label">Vol(100):</span> <span id="vol-100"
+                                class="value">0.00</span></div>
+                    </div>
+                </div>
+
+                <!-- Live Exchange Position Panel (Right) -->
+                <div id="info-panel-right" class="info-panel-right hidden">
+                    <div class="panel-header">Giełda (Live MXC)</div>
+
+                    <div class="panel-section">
+                        <div class="panel-row"><span class="label">LONG MEXC:</span> <span id="live-l-status"
+                                class="value">BRAK</span></div>
+                        <div class="panel-row"><span class="label">Ilość:</span> <span id="live-l-amt" class="value">0
+                                LTC</span></div>
+                        <div class="panel-row"><span class="label">Śr. Cena:</span> <span id="live-l-price"
+                                class="value">0.00</span></div>
+                        <div class="panel-row"><span class="label">Unrealized PnL:</span> <span id="live-l-pnl"
+                                class="value" style="font-weight: 600;">0.00</span></div>
+                    </div>
+
+                    <div class="panel-section no-border">
+                        <div class="panel-row"><span class="label">SHORT MEXC:</span> <span id="live-s-status"
+                                class="value">BRAK</span></div>
+                        <div class="panel-row"><span class="label">Ilość:</span> <span id="live-s-amt" class="value">0
+                                LTC</span></div>
+                        <div class="panel-row"><span class="label">Śr. Cena:</span> <span id="live-s-price"
+                                class="value">0.00</span></div>
+                        <div class="panel-row"><span class="label">Unrealized PnL:</span> <span id="live-s-pnl"
+                                class="value" style="font-weight: 600;">0.00</span></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js?v=4"></script>
+</body>
+
+</html>

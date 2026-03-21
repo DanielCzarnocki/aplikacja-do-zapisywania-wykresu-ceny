@@ -1,0 +1,20 @@
+# Bazy danych i duże pliki
+*.db
+*.sqlite3
+
+# Środowisko Pythona
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Pliki konfiguracyjne z hasłami (bardzo ważne!)
+.env
+config.json
+
+node_modules/
+dist/
+build/
+.vscode/
+
+mexc_bot_profile/
