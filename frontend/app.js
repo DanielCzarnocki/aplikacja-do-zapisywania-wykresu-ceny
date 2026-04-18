@@ -1,3 +1,63 @@
+// Custom Plugin for drawing a horizontal line from the last candle to the right
+class HorzRay {
+    constructor(price, color, lineStyle) {
+        this._price = price;
+        this._color = color;
+        this._lineStyle = lineStyle || 0; // 0: solid, 1: dashed, 2: dotted
+        this._requestUpdate = undefined;
+        this._series = undefined;
+    }
+
+    updatePrice(price) {
+        this._price = price;
+        if (this._requestUpdate) this._requestUpdate();
+    }
+
+    attached(param) {
+        this._requestUpdate = param.requestUpdate;
+        this._series = param.series;
+    }
+
+    detached() {
+        this._requestUpdate = undefined;
+        this._series = undefined;
+    }
+
+    draw(target) {
+        if (!this._series || this._price === null || this._price === undefined) return;
+
+        target.useBitmapCoordinateSpace((scope) => {
+            const ctx = scope.context;
+            const y = this._series.priceToCoordinate(this._price);
+            if (y === null) return;
+
+            const timeScale = this._series.chart().timeScale();
+            const lastData = this._series.data();
+            if (lastData.length === 0) return;
+            
+            const lastTime = lastData[lastData.length - 1].time;
+            const x = timeScale.timeToCoordinate(lastTime);
+            if (x === null) return;
+
+            const scaledY = Math.round(y * scope.verticalSpacing);
+            const scaledX = Math.round(x * scope.horizontalSpacing);
+            const scaledWidth = scope.bitmapSize.width;
+
+            ctx.save();
+            ctx.beginPath();
+            if (this._lineStyle === 1) ctx.setLineDash([8, 6]);
+            if (this._lineStyle === 2) ctx.setLineDash([2, 4]);
+            
+            ctx.strokeStyle = this._color;
+            ctx.lineWidth = Math.max(1, Math.floor(scope.verticalSpacing));
+            ctx.moveTo(scaledX, scaledY);
+            ctx.lineTo(scaledWidth, scaledY);
+            ctx.stroke();
+            ctx.restore();
+        });
+    }
+}
+
 // Initialize the chart
 const chartOptions = {
     layout: {
@@ -41,41 +101,52 @@ const mainLineSeries = chart.addLineSeries({
 
 // Average position price lines
 const longAvgSeries = chart.addLineSeries({
-    color: '#2196F3',
+    color: '#2E7D32',
     lineWidth: 1,
     lineStyle: LightweightCharts.LineStyle.Dashed,
     crosshairMarkerVisible: false,
     lastValueVisible: true,
+    priceLineVisible: false,
     title: 'L Avg',
 });
+const longAvgRay = new HorzRay(null, '#2E7D32', 1);
+longAvgSeries.attachPrimitive(longAvgRay);
 
 const shortAvgSeries = chart.addLineSeries({
-    color: '#E040FB',
+    color: '#C62828',
     lineWidth: 1,
     lineStyle: LightweightCharts.LineStyle.Dashed,
     crosshairMarkerVisible: false,
     lastValueVisible: true,
+    priceLineVisible: false,
     title: 'S Avg',
 });
+const shortAvgRay = new HorzRay(null, '#C62828', 1);
+shortAvgSeries.attachPrimitive(shortAvgRay);
 
-// Target price lines
 const longTargetSeries = chart.addLineSeries({
-    color: '#FF9800',
+    color: '#00E676',
     lineWidth: 2,
     lineStyle: LightweightCharts.LineStyle.Dotted,
     crosshairMarkerVisible: false,
     lastValueVisible: true,
+    priceLineVisible: false,
     title: 'L Cel',
 });
+const longTargetRay = new HorzRay(null, '#00E676', 2);
+longTargetSeries.attachPrimitive(longTargetRay);
 
 const shortTargetSeries = chart.addLineSeries({
-    color: '#FF4081',
+    color: '#FF5252',
     lineWidth: 2,
     lineStyle: LightweightCharts.LineStyle.Dotted,
     crosshairMarkerVisible: false,
     lastValueVisible: true,
+    priceLineVisible: false,
     title: 'S Cel',
 });
+const shortTargetRay = new HorzRay(null, '#FF5252', 2);
+shortTargetSeries.attachPrimitive(shortTargetRay);
 
 // Auto-resize chart
 new ResizeObserver(entries => {
@@ -133,6 +204,16 @@ function processIndicatorData(rawData) {
         if (pt.L_cel != null) longTarget.push({ time: pt.time, value: pt.L_cel });
         if (pt.S_cel != null) shortTarget.push({ time: pt.time, value: pt.S_cel });
     }
+
+    // Update ray plugins with the latest data
+    if (rawData.length > 0) {
+        const last = rawData[rawData.length - 1];
+        longAvgRay.updatePrice(last.L_blue);
+        shortAvgRay.updatePrice(last.S_blue);
+        longTargetRay.updatePrice(last.L_cel);
+        shortTargetRay.updatePrice(last.S_cel);
+    }
+    
     return { lineData, longAvg, shortAvg, longTarget, shortTarget };
 }
 
@@ -322,19 +403,26 @@ async function fetchCurrentCandle() {
             if (indicator && indicator.time) {
                 mainLineSeries.update({ time: indicator.time, value: indicator.value, color: trendColor(indicator.trend) });
 
-                // Update avg price lines
+                // Update avg price lines and horizontal rays
                 if (indicator.L_blue != null) {
                     longAvgSeries.update({ time: indicator.time, value: indicator.L_blue });
-                }
+                    longAvgRay.updatePrice(indicator.L_blue);
+                } else { longAvgRay.updatePrice(null); }
+                
                 if (indicator.S_blue != null) {
                     shortAvgSeries.update({ time: indicator.time, value: indicator.S_blue });
-                }
+                    shortAvgRay.updatePrice(indicator.S_blue);
+                } else { shortAvgRay.updatePrice(null); }
+                
                 if (indicator.L_cel != null) {
                     longTargetSeries.update({ time: indicator.time, value: indicator.L_cel });
-                }
+                    longTargetRay.updatePrice(indicator.L_cel);
+                } else { longTargetRay.updatePrice(null); }
+                
                 if (indicator.S_cel != null) {
                     shortTargetSeries.update({ time: indicator.time, value: indicator.S_cel });
-                }
+                    shortTargetRay.updatePrice(indicator.S_cel);
+                } else { shortTargetRay.updatePrice(null); }
             }
 
             if (panelData) {
@@ -621,23 +709,27 @@ async function fetchDevInfo() {
 
         // --- Horizontal bar chart ---
         html += `<div style="background: #1e222d; border: 1px solid #2a2e39; border-radius: 6px; padding: 10px;">
-            <div style="color: #d1d4dc; font-size: 12px; font-weight: 600; margin-bottom: 8px;">Rozkład uśrednień</div>`;
+            <div style="color: #d1d4dc; font-size: 12px; font-weight: 600; margin-bottom: 8px;">Prawdopodobieństwo zamknięcia (Success Rate)</div>`;
 
+        let cumulativeReached = totalAll;
         for (let i = 0; i < visibleRows; i++) {
             const c = counters[i];
-            const pct = totalAll > 0 ? ((c.count / totalAll) * 100) : 0;
-            const barWidth = maxCount > 0 ? ((c.count / maxCount) * 100) : 0;
+            // Probability: If we reached this level, what is the chance we close exactly here?
+            const successRate = cumulativeReached > 0 ? ((c.count / cumulativeReached) * 100) : 0;
+            const barWidth = successRate; // Now bar width reflects the probability
             const hasData = c.count > 0;
-            const barColor = hasData ? (pct > 30 ? '#089981' : pct > 10 ? '#2196F3' : '#FF9800') : 'transparent';
+            const barColor = hasData ? (successRate > 80 ? '#089981' : successRate > 50 ? '#2196F3' : '#FF9800') : 'transparent';
 
             html += `<div style="display: grid; grid-template-columns: 42px 1fr 52px; align-items: center; gap: 6px; margin-bottom: 3px; height: 20px;">
                 <span style="color: #8a8d9a; font-size: 10px; text-align: right; white-space: nowrap;">${c.averagings} uśr.</span>
-                <div style="position: relative; height: 16px; background: #131722; border-radius: 3px; overflow: hidden;">
-                    <div style="height: 100%; width: ${barWidth}%; background: ${barColor}; border-radius: 3px; transition: width 0.3s ease;"></div>
+                <div style="position: relative; height: 16px; background: #131722; border-radius: 3px; overflow: hidden;" title="Ilość pozycji, które dotarły do tego poziomu: ${cumulativeReached}">
+                    <div style="height: 100%; width: ${barWidth}%; background: ${barColor}; border-radius: 3px; transition: width 0.3s ease; opacity: 0.85;"></div>
                     ${hasData ? `<span style="position: absolute; left: 6px; top: 50%; transform: translateY(-50%); font-size: 9px; color: #fff; font-weight: 600; text-shadow: 0 0 3px rgba(0,0,0,0.8);">${c.count}</span>` : ''}
                 </div>
-                <span style="color: ${hasData ? '#d1d4dc' : '#434651'}; font-size: 11px; font-weight: 500; text-align: right;">${pct.toFixed(1)}%</span>
+                <span style="color: ${hasData ? '#d1d4dc' : '#434651'}; font-size: 11px; font-weight: 500; text-align: right;" title="Prawdopodobieństwo zamknięcia na tym poziomie">${successRate.toFixed(1)}%</span>
             </div>`;
+
+            cumulativeReached -= c.count;
         }
 
         html += `</div>`;
